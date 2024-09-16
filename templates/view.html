@@ -73,6 +73,57 @@
         max-width: inherit;
     }
 
+    .range-label {
+        font-weight: bold;
+        margin-bottom: 5px;
+        display: block;
+    }
+
+    .stepper-pair {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+
+    .stepper {
+        display: flex;
+        align-items: center;
+        width: 48%;
+    }
+
+    .stepper label {
+        margin-right: 10px;
+        white-space: nowrap;
+    }
+
+    .stepper input[type="number"] {
+        width: 60px;
+        padding: 5px;
+    }
+
+    .channel-selection {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 15px;
+    }
+
+    .channel-dropdown {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
+    }
+
+    .channel-dropdown label {
+        margin-right: 10px;
+        white-space: nowrap;
+    }
+
+    .channel-dropdown select {
+        width: 120px;
+        padding: 5px;
+    }
+
 </style>
 {% endblock %}
 
@@ -104,25 +155,49 @@
                 <input type="range" id="particle_slider" name="particle_slider" min="0" max="{{ all_particles_len - 1 }}" value="{{ current_particle_index }}">
                 <span id="particle_value">{{ current_particle_index }}/ {{ all_particles_len - 1 }}</span>
             </div>
-            <!-- Dropdown Menus -->
+            <!-- Channel selection -->
             <div class="control-group">
-                <label for="dropdown1">Dropdown 1</label>
-                <select id="dropdown1" name="dropdown1">
-                    <option value="option1">Option 1</option>
-                    <option value="option2">Option 2</option>
-                    <option value="option3">Option 3</option>
-                </select>
+                <label class="range-label">Channel selection</label>
+                <div class="channel-selection">
+                    {% for i in range(n_channels + 1) %}
+                    <div class="channel-dropdown">
+                        <label for="channel_{{ i }}">{{ i }} Channel:</label>
+                        <select id="channel_{{ i }}" name="channel_{{ i }}">
+                            <option value="Brightfield">Brightfield</option>
+                            <option value="Fluorescent">Fluorescent</option>
+                            <option value="Not Used">Not Used</option>
+                        </select>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <!-- Selects -->
+            <div class="control-group">
+                <label class="range-label">Position range</label>
+                <div class="stepper-pair">
+                    <div class="stepper">
+                        <label for="position_min">Min:</label>
+                        <input type="number" id="position_min" name="position_min" min="0" max="{{ n_positions - 1 }}" value="0">
+                    </div>
+                    <div class="stepper">
+                        <label for="position_max">Max:</label>
+                        <input type="number" id="position_max" name="position_max" min="0" max="{{ n_positions - 1 }}" value="{{ n_positions - 1 }}">
+                    </div>
+                </div>
             </div>
             <div class="control-group">
-                <label for="dropdown2">Dropdown 2</label>
-                <select id="dropdown2" name="dropdown2">
-                    <option value="option1">Option 1</option>
-                    <option value="option2">Option 2</option>
-                    <option value="option3">Option 3</option>
-                </select>
+                <label class="range-label">Frame range</label>
+                <div class="stepper-pair">
+                    <div class="stepper">
+                        <label for="frame_min">Min:</label>
+                        <input type="number" id="frame_min" name="frame_min" min="0" max="{{ n_frames }}" value="0">
+                    </div>
+                    <div class="stepper">
+                        <label for="frame_max">Max:</label>
+                        <input type="number" id="frame_max" name="frame_max" min="0" max="{{ n_frames }}" value="{{ n_frames }}">
+                    </div>
+                </div>
             </div>
-            <!-- Button -->
-            <button onclick="alert('Button clicked!')">Click Me</button>
             <div class="button-group">
                     <button class="button">Do Segmentation</button>
                     <button class="button" >Do Tracking</button>
