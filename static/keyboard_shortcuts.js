@@ -21,7 +21,7 @@ document.addEventListener("keydown", (event) => {
         channelSlider.value = parseInt(channelSlider.value) - 1;
         break;
     }
-  } else if (event.ctrlKey) {
+  } else if (event.altKey) {
     switch (event.key) {
       case "ArrowUp":
         timeframeSlider.value = parseInt(timeframeSlider.value) + 1;
