@@ -3,6 +3,7 @@ channelSlider.addEventListener("input", updateImage);
 timeframeSlider.addEventListener("input", updateImage);
 particleSlider.addEventListener("input", updateImage);
 
+// window.updateImage = function () {
 function updateImage() {
   const params = {
     position: document.getElementById("position_slider").value,
