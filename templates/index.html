@@ -33,6 +33,28 @@
     </form>
 </div>
 
+<h1 class="text-2xl font-bold mb-4">Server File Browser</h1>
+<div class="flex mb-4">
+    <input
+        id="currentPath"
+        type="text"
+        class="flex-grow p-2 border rounded-l"
+        value="/"
+        readonly
+    />
+    <button id="upDir" class="bg-blue-500 text-white px-4 py-2">Up</button>
+    <button
+        id="selectFolder"
+        class="bg-green-500 text-white px-4 py-2 rounded-r"
+    >
+        Select Folder
+    </button>
+</div>
+<div id="fileList" class="border p-4 h-96 overflow-y-auto">
+    <!-- File list will be populated here -->
+</div>
+<p id="selectedItem" class="mt-4 text-gray-700"></p>
+
 <style>
     .button-container {
         margin-top: 20px;
