@@ -21,23 +21,36 @@ STRUCT5 = np.ones((5,5), dtype=np.bool_)
 STRUCT5[[0,0,-1,-1], [0,-1,0,-1]] = False
 
 @nb.njit
-def window_std(img):
-    """Calculate unnormed variance of 'img'"""
+def window_std(img: np.ndarray) -> float:
+    """
+    Calculate unnormed variance of 'img'
+    Refer to https://en.wikipedia.org/wiki/Variance#Unbiased_sample_variance
+    Refer to Pyama https://github.com/SoftmatterLMU-RaedlerGroup/pyama/tree/master
+
+    Parameters:
+    img (np.ndarray): Input image
+
+    Returns:
+    float: Unnormed variance of the image
+    """
     return np.sum((img - np.mean(img))**2)
 
-
 @nb.njit
-def generic_filter(img, fun, size=3, reflect=False):
-    """Apply filter to image.
+def generic_filter(img: np.ndarray, fun: callable, size: int = 3, reflect: bool = False) -> np.ndarray:
+    """
+    Apply filter to image.
 
-    img -- the image to be filtered
-    fun -- the filter function to be applied, must accept subimage of 'img' as only argument and return a scalar
-    size -- the size (side length) of the mask; must be an odd integer
-    reflect -- switch for border mode: True for 'reflect', False for 'mirror'
+    Parameters:
+    img (np.ndarray): The image to be filtered
+    fun (callable): The filter function to be applied, must accept subimage of 'img' as only argument and return a scalar. "Fun" stands for function and callable should stand for function in Python
+    size (int): The size (side length) of the kernel. Must be an odd integer
+    reflect (bool): Switch for border mode: True for 'reflect', False for 'mirror'. Reflect and Mirror should be filling the borders of the img.
 
-    Returns a np.float64 array with same shape as 'img'.
+    Returns:
+    np.ndarray: Filtered image as a np.float64 array with same shape as 'img'
 
-    This function is intended to be a numba-capable replacement of scipy.ndimage.generic_filter.
+    Raises:
+    ValueError: If 'size' is not an odd integer
     """
     if size % 2 != 1:
         raise ValueError("'size' must be an odd integer")
@@ -67,19 +80,18 @@ def generic_filter(img, fun, size=3, reflect=False):
     return filtered_img
 
 
-def binarize_frame(img, mask_size=3):
-
+def binarize_frame(img: np.ndarray, mask_size: int = 3) -> np.ndarray:
     """
     Coarse segmentation of phase-contrast image frame
+    Refer to OpenCV tutorials for more information on binarization/thresholding techniques.
 
     Parameters:
-    img (numpy.ndarray): The image to be binarized
-    mask_size (int): The size of the mask to be used in the binarization process
+    img (np.ndarray): The image to be binarized
+    mask_size (int): The size of the mask to be used in the binarization process (mask refers to kernel size in image processing)
 
     Returns:
-    numpy.ndarray: Binarized image of frame
+    np.ndarray: Binarized image of frame
     """
-
     # Get logarithmic standard deviation at each pixel
     std_log = generic_filter(img, window_std, size=mask_size)
     std_log[std_log>0] = (np.log(std_log[std_log>0]) - np.log(mask_size**2 - 1)) / 2
@@ -101,12 +113,36 @@ def binarize_frame(img, mask_size=3):
 
     return img_bin
 
-def csv_output(out_dir,pos,mins,use_square_rois=True):
+def csv_output(out_dir: str, pos: list, mins: float, use_square_rois: bool = True) -> None:
+    """
+    Generate CSV output for tracked positions
+
+    Parameters:
+    out_dir (str): Output directory path
+    pos (list): List of positions to process
+    mins (float): Minutes per frame
+    use_square_rois (bool): Whether to use square ROIs
+
+    Returns:
+    None
+    """
     folders = get_tracked_folders(out_dir,pos)
     for folder in folders:
         csv_output_position(folder[0],folder[1],mins,use_square_rois)
 
-def csv_output_position(pos,pos_path,mins,use_square_rois):
+def csv_output_position(pos: int, pos_path: pathlib.Path, mins: float, use_square_rois: bool) -> None:
+    """
+    Generate CSV output for a single position
+
+    Parameters:
+    pos (int): Position number
+    pos_path (pathlib.Path): Path to position directory
+    mins (float): Minutes per frame
+    use_square_rois (bool): Whether to use square ROIs
+
+    Returns:
+    None
+    """
     tracks_path = pos_path.joinpath('tracks.csv')
     tracks = pd.read_csv(tracks_path.absolute(),index_col=0)
 
@@ -143,7 +179,21 @@ def csv_output_position(pos,pos_path,mins,use_square_rois):
     print('Done')
 
 
-def table_to_image(pos_path,particles,table,name):
+def table_to_image(pos_path: pathlib.Path, particles: list, table: pd.DataFrame, name: str) -> None:
+    """
+    Convert table data to image and save it.
+    This is a post-processing step.
+    These converts the table data to the fluorescent tracks image.
+
+    Parameters:
+    pos_path (pathlib.Path): Path to position directory
+    particles (list): List of particle IDs
+    table (pd.DataFrame): Data table
+    name (str): Name for the output file
+
+    Returns:
+    None
+    """
     plt.ioff()
     fig = plt.figure()
 
@@ -156,12 +206,24 @@ def table_to_image(pos_path,particles,table,name):
     plt.tight_layout()
 
     fig.savefig(pos_path.joinpath(name + '.png').absolute())
-    fig.savefig('/home/s/Simon.Prins/Desktop/' + name + '.png')
 
     plt.ion()
 
-def csv_get_table(particles,tracks,frames,mins,col):
+def csv_get_table(particles: list, tracks: pd.DataFrame, frames: list, mins: float, col: str) -> pd.DataFrame:
+    """
+    Post-processing step that converts from TrackPy to Pyama format.
+    Extract data from tracks and create a table.
 
+    Parameters:
+    particles (list): List of particle IDs
+    tracks (pd.DataFrame): Tracking data
+    frames (list): List of frame numbers
+    mins (float): Minutes per frame
+    col (str): Column name to extract
+
+    Returns:
+    pd.DataFrame: Extracted data table
+    """
     keys = []
     keys.append('time')
     for p in particles:
@@ -186,12 +248,36 @@ def csv_get_table(particles,tracks,frames,mins,col):
     return pd.DataFrame(data)
 
 
-def square_roi(out_dir,pos,micron_size):
+def square_roi(out_dir: str, pos: list, micron_size: float) -> None:
+    """
+    Post-processing step where the micron_size defines the length of the squares.
+    Apply square ROI to tracked positions
+
+    Parameters:
+    out_dir (str): Output directory path
+    pos (list): List of positions to process
+    micron_size (float): Size of ROI in microns
+
+    Returns:
+    None
+    """
     folders = get_tracked_folders(out_dir,pos)
     for folder in folders:
         square_roi_position(folder[0],folder[1],micron_size)
 
-def square_roi_position(pos,pos_path,micron_size):
+def square_roi_position(pos: int, pos_path: pathlib.Path, micron_size: float) -> None:
+    """
+    Post-processing step where the micron_size defines the length of the squares.
+    Apply square ROI to a single position.
+
+    Parameters:
+    pos (int): Position number
+    pos_path (pathlib.Path): Path to position directory
+    micron_size (float): Size of ROI in microns
+
+    Returns:
+    None
+    """
     tracks_path = pos_path.joinpath('tracks.csv')
     tracks = pd.read_csv(tracks_path.absolute(),index_col=0)
 
@@ -229,7 +315,21 @@ def square_roi_position(pos,pos_path,micron_size):
     tracks.to_csv(tracks_path.absolute())
     print("Done")
 
-def square_roi_position_old(nd2_path,out_dir,pos,micron_size):
+
+# to be deprecated since the function above is the only one being used.
+def square_roi_position_old(nd2_path: str, out_dir: str, pos: int, micron_size: float) -> None:
+    """
+    Old version of square ROI application to a single position
+
+    Parameters:
+    nd2_path (str): Path to ND2 file
+    out_dir (str): Output directory path
+    pos (int): Position number
+    micron_size (float): Size of ROI in microns
+
+    Returns:
+    None
+    """
     if not pathlib.Path(nd2_path).is_file():
         print("Invalid ND2 Path")
         return
@@ -288,7 +388,16 @@ def square_roi_position_old(nd2_path,out_dir,pos,micron_size):
     print("Done")
 
 
-def get_position_folders(out_dir):
+def get_position_folders(out_dir: str) -> list:
+    """
+    Get a list of position folders from the output directory
+
+    Parameters:
+    out_dir (str): Output directory path
+
+    Returns:
+    list: List of tuples containing position number and path
+    """
     folders =  []
     for path in pathlib.Path(out_dir).iterdir():
         if not path.is_dir():
@@ -301,7 +410,17 @@ def get_position_folders(out_dir):
         folders.append((pos,path))
     return folders
 
-def get_tracking_folders(out_dir,pos):
+def get_tracking_folders(out_dir: str, pos: list) -> list:
+    """
+    Get a list of tracking folders for specified positions
+
+    Parameters:
+    out_dir (str): Output directory path
+    pos (list): List of position numbers
+
+    Returns:
+    list: List of tuples containing position number and path
+    """
     pos = list(set(pos))
     pos_folders = get_position_folders(out_dir)
 
@@ -323,7 +442,17 @@ def get_tracking_folders(out_dir,pos):
         folders.append(folder)
     return folders
 
-def get_tracked_folders(out_dir,pos):
+def get_tracked_folders(out_dir: str, pos: list) -> list:
+    """
+    Get a list of tracked folders for specified positions
+
+    Parameters:
+    out_dir (str): Output directory path
+    pos (list): List of position numbers
+
+    Returns:
+    list: List of tuples containing position number and path
+    """
     pos = list(set(pos))
     pos_folders = get_position_folders(out_dir)
 
@@ -350,12 +479,37 @@ def get_tracked_folders(out_dir,pos):
         folders.append(folder)
     return folders
 
-def tracking_pyama(out_dir,pos,expand=0):
+def tracking_pyama(out_dir: str, pos: list, expand: int = 0) -> None:
+    """
+    Perform Pyama tracking on specified positions and saves them into the output directory
+
+    Parameters:
+    out_dir (str): Output directory path
+    pos (list): List of position numbers
+    expand (int): Expansion factor for labels
+
+    Returns:
+    None
+    """
     folders = get_tracking_folders(out_dir,pos)
     for folder in folders:
         track_position_pyama(folder[0],folder[1],expand)
 
-def track_position_pyama(pos,pos_path,expand):
+def track_position_pyama(pos: int, pos_path: pathlib.Path, expand: int) -> None:
+    """
+    Perform Pyama tracking on a single position.
+    data.h5 contains the segmentation and the background corrected fluorescence images.
+    features.csv contains the features of the particles. Bounding boxes, integrated fluorescence.
+    The track is being saved as tracks.csv file
+
+    Parameters:
+    pos (int): Position number
+    pos_path (pathlib.Path): Path to position directory
+    expand (int): Expansion factor for labels
+
+    Returns:
+    None
+    """
     features_path = pos_path.joinpath('features.csv')
     features = pd.read_csv(features_path.absolute(),index_col=0)
 
@@ -477,7 +631,17 @@ def track_position_pyama(pos,pos_path,expand):
     print("Done")
 
 
-def position_path(out_dir,pos):
+def position_path(out_dir: str, pos: int) -> pathlib.Path:
+    """
+    Get the path for a specific position
+
+    Parameters:
+    out_dir (str): Output directory path
+    pos (int): Position number
+
+    Returns:
+    pathlib.Path: Path to the position directory
+    """
     for path in pathlib.Path(out_dir).iterdir():
         if not path.is_dir():
             continue
@@ -487,7 +651,16 @@ def position_path(out_dir,pos):
     return None
 
 
-def pyama_segmentation(img):
+def pyama_segmentation(img: np.ndarray) -> np.ndarray:
+    """
+    Perform Pyama segmentation on an image
+
+    Parameters:
+    img (np.ndarray): Input image
+
+    Returns:
+    np.ndarray: Labeled segmentation of the image
+    """
     binary_segmentation = binarize_frame(img)
 
     # remove small objects MIN_SIZE=1000
@@ -497,13 +670,29 @@ def pyama_segmentation(img):
     return sk.measure.label(binary_segmentation, connectivity=1)
 
 
-def segment_positions(nd2_path,out_dir,pos,seg_channel,fl_channels,frame_min=None,frame_max=None, bg_corr=True):
+def segment_positions(nd2_path: str, out_dir: str, pos: list, seg_channel: int, fl_channels: list, frame_min: int = None, frame_max: int = None, bg_corr: bool = True) -> None:
+    """
+    Segment positions from an ND2 file
+
+    Parameters:
+    nd2_path (str): Path to ND2 file
+    out_dir (str): Output directory path
+    pos (list): List of position numbers
+    seg_channel (int): Segmentation channel index
+    fl_channels (list): List of fluorescence channel indices
+    frame_min (int): Minimum frame number
+    frame_max (int): Maximum frame number
+    bg_corr (bool): Whether to perform background correction
+
+    Returns:
+    None
+    """
     if not pathlib.Path(nd2_path).is_file():
         print("Invalid ND2 Path")
         return
 
     fl_channels = list(set(fl_channels))
-    pos = list(set(pos))
+    pos = list(set(pos)) # remove duplicates
 
     nd2 = ND2Reader(nd2_path)
 
@@ -657,6 +846,11 @@ def segment_positions(nd2_path,out_dir,pos,seg_channel,fl_channels,frame_min=Non
 
 
 def background_spline(image,img_mask,countX,countY,overlap):
+    """
+    It creates a grid of the image with support pillars. Then you get the mean, a spline and substract it from the image.
+
+    It is based on the Schwarzfischer paper (not exactly like the one applied there, but inspired on it)
+    """
     h,w = image.shape
 
 
@@ -694,6 +888,10 @@ def background_spline(image,img_mask,countX,countY,overlap):
     return bg_spline(x=range(w), y=range(h)).T
 
 def background_correction(image,img_mask,countX,countY,overlap = 0.1):
+    """
+
+    """
+
     h,w = image.shape
     patch = background_spline(image,img_mask,countX,countY,overlap)
     bg_mean = patch.mean()
