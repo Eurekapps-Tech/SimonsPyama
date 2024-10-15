@@ -669,7 +669,6 @@ def pyama_segmentation(img: np.ndarray) -> np.ndarray:
     # convert binary mask to labels (1,2,3,...)
     return sk.measure.label(binary_segmentation, connectivity=1)
 
-
 def segment_positions(nd2_path: str, out_dir: str, pos: list, seg_channel: int, fl_channels: list, frame_min: int = None, frame_max: int = None, bg_corr: bool = True) -> None:
     """
     Segment positions from an ND2 file
@@ -718,132 +717,100 @@ def segment_positions(nd2_path: str, out_dir: str, pos: list, seg_channel: int, 
     padding = int(np.ceil(np.log10(max(nd2.metadata['fields_of_view']))))
     frames = list(nd2.metadata['frames'])
 
-    if not frame_min is None:
-        if not frame_min in frames:
+    if frame_min is not None:
+        if frame_min not in frames:
             print('Invalid frame_min')
             return
     else:
         frame_min = frames[0]
 
-    if not frame_max is None:
-        if not frame_max in frames:
+    if frame_max is not None:
+        if frame_max not in frames:
             print('Invalid frame_max')
             return
     else:
-        frame_max = frames[len(frames)-1]
+        frame_max = frames[-1]
 
-    if frame_max <  frame_min:
+    if frame_max < frame_min:
         print('frame_max must be greater or equal to frame_min')
         return
 
-    frames = [f for f in frames if f >= frame_min and f <= frame_max]
+    frames = [f for f in frames if frame_min <= f <= frame_max]
 
-    width,height,num_frames = nd2.metadata['width'],nd2.metadata['height'],len(frames)
+    width, height, num_frames = nd2.metadata['width'], nd2.metadata['height'], len(frames)
 
     print('Segmentation Channel: ' + nd2.metadata['channels'][seg_channel])
     print('Fluorescence Channels: ' + ', '.join(fl_channel_names))
 
     for pos in positions:
-        print("Segmenting position " + str(pos))
-        pos_dir = pathlib.Path(out_dir).joinpath('XY' + str(pos).zfill(padding))
+        print(f"Segmenting position {pos}")
+        pos_dir = pathlib.Path(out_dir).joinpath(f'XY{str(pos).zfill(padding)}')
         pos_dir.mkdir(parents=True, exist_ok=True)
 
         file_path = pos_dir.joinpath('data.h5')
-        file_handle = h5py.File(file_path.absolute(), "w")
 
-        data_labels = file_handle.create_dataset('labels',(num_frames,height,width),dtype=np.uint16,chunks=(1,height,width))
-        data_fl = file_handle.create_dataset('fluorescence',(num_frames,len(fl_channels),height,width),dtype=np.float64,chunks=(1,1,height,width))
+        feature_keys = ['x', 'y'] + [f'brightness_{i}' for i in range(len(fl_channels))] + ['area', 'frame', 'label', 'bbox_x1', 'bbox_x2', 'bbox_y1', 'bbox_y2']
+        feature_data = {key: [] for key in feature_keys}
 
-        file_handle.attrs['frame_min'] = frame_min
-        file_handle.attrs['frame_max'] = frame_max
-        file_handle.attrs['seg_channel'] = seg_channel
-        file_handle.attrs['fl_channels'] = fl_channels
-        file_handle.attrs['fl_channel_names'] = fl_channel_names
-        file_handle.attrs['width'] = nd2.metadata['width']
-        file_handle.attrs['height'] = nd2.metadata['height']
-        file_handle.attrs['pixel_microns'] = nd2.metadata['pixel_microns']
+        with h5py.File(file_path.absolute(), "w") as file_handle:
+            data_labels = file_handle.create_dataset('labels', (num_frames, height, width), dtype=np.uint16, chunks=(1, height, width))
+            data_fl = file_handle.create_dataset('fluorescence', (num_frames, len(fl_channels), height, width), dtype=np.float64, chunks=(1, 1, height, width))
 
-        feature_keys = []
-        feature_keys.append('x')
-        feature_keys.append('y')
+            file_handle.attrs['frame_min'] = frame_min
+            file_handle.attrs['frame_max'] = frame_max
+            file_handle.attrs['seg_channel'] = seg_channel
+            file_handle.attrs['fl_channels'] = fl_channels
+            file_handle.attrs['fl_channel_names'] = fl_channel_names
+            file_handle.attrs['width'] = nd2.metadata['width']
+            file_handle.attrs['height'] = nd2.metadata['height']
+            file_handle.attrs['pixel_microns'] = nd2.metadata['pixel_microns']
 
-        for i in range(len(fl_channels)):
-            feature_keys.append('brightness_' + str(i))
+            for index, frame in enumerate(frames):
+                frame_image = nd2.get_frame_2D(t=frame, c=seg_channel, v=pos)
+                binary_segmentation = binarize_frame(frame_image)
 
-        feature_keys.append('area')
-        feature_keys.append('frame')
-        feature_keys.append('label')
-        feature_keys.append('bbox_x1')
-        feature_keys.append('bbox_x2')
-        feature_keys.append('bbox_y1')
-        feature_keys.append('bbox_y2')
+                sk.morphology.remove_small_objects(binary_segmentation, min_size=1000, out=binary_segmentation)
+                label_segmentation = sk.measure.label(binary_segmentation, connectivity=1)
 
-        feature_data = {}
-        for key in feature_keys:
-            feature_data[key] = []
+                frame_fl_images = []
+                for c in fl_channels:
+                    frame_fl_image = nd2.get_frame_2D(t=frame, c=c, v=pos)
+                    if bg_corr:
+                        frame_fl_image = background_correction(frame_fl_image, label_segmentation, 5, 5, 0.5)
+                    frame_fl_images.append(frame_fl_image)
 
-        for index,frame in enumerate(frames):
-            frame_image = nd2.get_frame_2D(t=frame,c=seg_channel,v=pos)
-            binary_segmentation = binarize_frame(frame_image)
+                props = sk.measure.regionprops(label_segmentation)
+                print(f"Frame {frame}: {len(props)} features")
 
-            # remove small objects MIN_SIZE=1000
-            sk.morphology.remove_small_objects(binary_segmentation,min_size=1000,out=binary_segmentation)
+                for prop in props:
+                    if prop.bbox[0] == 0 or prop.bbox[1] == 0 or prop.bbox[2] == height or prop.bbox[3] == width:
+                        label_segmentation[label_segmentation == prop.label] = 0
+                        continue
 
-            # convert binary mask to labels (1,2,3,...)
-            label_segmentation = sk.measure.label(binary_segmentation, connectivity=1)
+                    x, y = prop.centroid
+                    feature_data['x'].append(x)
+                    feature_data['y'].append(y)
 
-            frame_fl_images = []
-            for c in fl_channels:
-                frame_fl_image = nd2.get_frame_2D(t=frame,c=c,v=pos)
-                if bg_corr:
-                    frame_fl_image = background_correction(frame_fl_image,label_segmentation,5,5,0.5)
-                frame_fl_images.append(frame_fl_image)
+                    for i, fl_image in enumerate(frame_fl_images):
+                        feature_data[f'brightness_{i}'].append(fl_image[tuple(prop.coords.T)].sum())
 
-            props = sk.measure.regionprops(label_segmentation)
-            print("Frame " + str(frame) + ": " + str(len(props)) + " features")
+                    feature_data['area'].append(prop.area)
+                    feature_data['frame'].append(frame)
+                    feature_data['label'].append(prop.label)
+                    feature_data['bbox_x1'].append(prop.bbox[0])
+                    feature_data['bbox_y1'].append(prop.bbox[1])
+                    feature_data['bbox_x2'].append(prop.bbox[2] - 1)
+                    feature_data['bbox_y2'].append(prop.bbox[3] - 1)
 
-            frame_feature_count = 0
-            for prop in props:
-
-                # Remove Edge Touching objects
-                if prop.bbox[0] == 0 or prop.bbox[1] == 0 or prop.bbox[2] == height or prop.bbox[3] == width:
-                    label_segmentation[label_segmentation == prop.label] = 0
-                    continue
-
-                #prop.mass = bg_corr[tuple(prop.coords.T)].sum()
-                x,y = prop.centroid
-                feature_data['x'].append(x)
-                feature_data['y'].append(y)
-
-                for i in range(len(frame_fl_images)):
-                    feature_data['brightness_' + str(i)].append(frame_fl_images[i][tuple(prop.coords.T)].sum())
-
-                feature_data['area'].append(prop.area)
-                feature_data['frame'].append(frame)
-                feature_data['label'].append(prop.label)
-
-                # upper exclusive bounding box (hence -1)
-                feature_data['bbox_x1'].append(prop.bbox[0])
-                feature_data['bbox_y1'].append(prop.bbox[1])
-                feature_data['bbox_x2'].append(prop.bbox[2]-1)
-                feature_data['bbox_y2'].append(prop.bbox[3]-1)
-
-                frame_feature_count += 1
-
-            data_labels[index,:,:] = label_segmentation[:,:]
-
-            for i in range(len(frame_fl_images)):
-                data_fl[index,i,:,:] = frame_fl_images[i][:,:]
-
-        file_handle.close()
+                data_labels[index, :, :] = label_segmentation
+                for i, fl_image in enumerate(frame_fl_images):
+                    data_fl[index, i, :, :] = fl_image
 
         features_path = pos_dir.joinpath('features.csv')
         features = pd.DataFrame(feature_data)
         features.to_csv(features_path.absolute())
 
     print("Done")
-
-
 
 def background_spline(image,img_mask,countX,countY,overlap):
     """
