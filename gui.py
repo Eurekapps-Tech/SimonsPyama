@@ -195,6 +195,7 @@ class CellViewer:
         self.data_dir = os.path.join(self.output_path,self.position[1][1])
         if self.file is not None:
             self.file.close()
+        print(self.data_dir)
         self.file = h5py.File(os.path.join(self.data_dir,'data.h5'), "r")
         self.frame_min = self.file.attrs['frame_min']
         self.frame_max = self.file.attrs['frame_max']
