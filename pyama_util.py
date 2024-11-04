@@ -402,11 +402,11 @@ def get_position_folders(out_dir: str) -> list:
     for path in pathlib.Path(out_dir).iterdir():
         if not path.is_dir():
             continue
-        if not re.search('^XY0*\d+$', path.name):
+        if not re.search('^XY0*\\d+$', path.name):
             continue
 
         number_str = path.name[2:].lstrip('0')
-        pos = int(number_str)
+        pos = int(number_str) if number_str else 0
         folders.append((pos,path))
     return folders
 
