@@ -276,6 +276,7 @@ class CellViewer:
             self.frame_changed()
 
         self.brightness_plot = self.plotly_to_json(self.brightness_figure)
+
     # enable / disable current particle and save tracks to file
     def particle_enabled_changed(self):
         self.all_tracks.loc[self.all_tracks['particle'] == self.particle, 'enabled'] = self.particle_enabled
