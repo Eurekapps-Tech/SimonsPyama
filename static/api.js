@@ -115,6 +115,12 @@ function fetchImageUpdate(url, params) {
     .then((response) => response.json())
     .then((data) => {
       updateImageDisplay(data.channel_image);
+      if (data.all_particles_len !== undefined) {
+        const particleSlider = document.getElementById("particle_slider");
+        particleSlider.max = data.all_particles_len - 1;
+        document.getElementById("particle_value").innerHTML =
+          `${particleSlider.value}/${data.all_particles_len - 1}`;
+      }
       if (data.brightness_plot) {
         Plotly.react(
           "brightness-plot",
