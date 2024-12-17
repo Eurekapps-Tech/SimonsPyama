@@ -166,10 +166,14 @@ function fetchImageUpdate(url, params) {
           JSON.parse(data.brightness_plot).layout,
         );
       }
-      // Update checkbox state based on particle enabled status
-      if (data.particle_enabled !== undefined) {
-        particleEnabledCheckbox.checked = data.particle_enabled;
-        particleEnabledCheckbox.dataset.particle = data.current_particle;
+      // Update checkbox state based on disabled particles
+      if (
+        data.current_particle !== undefined &&
+        data.disabled_particles !== undefined
+      ) {
+        particleEnabledCheckbox.checked = !data.disabled_particles.includes(
+          data.current_particle,
+        );
       }
     });
 }

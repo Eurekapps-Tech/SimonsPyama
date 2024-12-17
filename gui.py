@@ -46,6 +46,8 @@ class CellViewer:
 
         self.particle = None
         self.position = None
+        self.key_down = {}
+        self.disabled_particles = []
 
         # Only run position-related initialization if init_type is 'view'
         if init_type == 'view':
@@ -143,9 +145,9 @@ class CellViewer:
 
     def update_plots(self):
         particle_index = self.particle_index()
-        disabled_particles = self.all_tracks[self.all_tracks['enabled'] != 1]['particle'].unique()
+        self.disabled_particles = list(self.all_tracks[self.all_tracks['enabled'] != 1]['particle'].unique())
 
-        print("disabled:", disabled_particles)
+        print("disabled:", self.disabled_particles)
 
         # boolean list [True, False] => enabled, disabled
         particle_states = list(self.all_tracks.groupby(['particle'])['enabled'].all())

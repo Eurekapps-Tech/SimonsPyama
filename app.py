@@ -52,7 +52,8 @@ class App:
                                    n_frames=self.cell_viewer.frame_max,
                                    all_particles_len=self.cell_viewer.all_particles_len,
                                    current_particle_index=current_particle_index,
-                                   brightness_plot=self.cell_viewer.brightness_plot)
+                                   brightness_plot=self.cell_viewer.brightness_plot,
+                                   disabled_particles=self.cell_viewer.disabled_particles)
 
         @self.app.route('/preprocess', methods=['GET', 'POST'])
         def processing():
@@ -89,7 +90,8 @@ class App:
                 'brightness_plot': self.cell_viewer.brightness_plot,
                 'all_particles_len': self.cell_viewer.all_particles_len,
                 'particle_enabled': self.cell_viewer.particle_enabled,
-                'current_particle': self.cell_viewer.particle
+                'current_particle': self.cell_viewer.particle,
+                'disabled_particles': self.cell_viewer.disabled_particles
             })
 
         @self.app.route('/update_particle_enabled', methods=['POST'])
@@ -101,7 +103,8 @@ class App:
                 self.cell_viewer.particle_enabled_changed()
                 return jsonify({
                     'channel_image': self.cell_viewer.return_image(),
-                    'brightness_plot': self.cell_viewer.brightness_plot
+                    'brightness_plot': self.cell_viewer.brightness_plot,
+                    'disabled_particles': self.cell_viewer.disabled_particles
                 })
             return jsonify({'error': 'Cell viewer not initialized'}), 400
 
