@@ -143,7 +143,7 @@ class CellViewer:
 
     def update_plots(self):
         particle_index = self.particle_index()
-        disabled_particles = self.all_tracks[self.all_tracks['enabled'] == False]['particle'].unique()
+        disabled_particles = self.all_tracks[self.all_tracks['enabled'] != 1]['particle'].unique()
 
         print("disabled:", disabled_particles)
 
@@ -279,7 +279,12 @@ class CellViewer:
 
     # enable / disable current particle and save tracks to file
     def particle_enabled_changed(self):
-        self.all_tracks.loc[self.all_tracks['particle'] == self.particle, 'enabled'] = self.particle_enabled
+        if self.particle_enabled == True:
+            index_csv = 1
+        else:
+            index_csv = 0
+        # self.all_tracks.loc[self.all_tracks['particle'] == self.particle, 'enabled'] = self.particle_enabled
+        self.all_tracks.loc[self.all_tracks['particle'] == self.particle, 'enabled'] = index_csv
         self.all_tracks.to_csv(self.data_dir + '/tracks.csv')
         self.update_plots()
         self.draw_outlines()

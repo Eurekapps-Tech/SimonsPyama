@@ -9,6 +9,18 @@ positionSlider.addEventListener("input", updateImageAndPlot);
 channelSlider.addEventListener("input", updateImage);
 timeframeSlider.addEventListener("input", updateImage);
 particleSlider.addEventListener("input", updateImageAndPlot);
+const particleEnabledCheckbox = document.getElementById("particle_enabled");
+
+// Set default state of checkbox to checked
+document.addEventListener("DOMContentLoaded", function () {
+  if (particleEnabledCheckbox) {
+    particleEnabledCheckbox.checked = true;
+  }
+});
+
+particleEnabledCheckbox.addEventListener("change", function () {
+  updateParticleEnabled(this.checked);
+});
 
 /**
  * Updates both the image and brightness plot
@@ -58,6 +70,32 @@ function updateBrightnessPlot() {
         );
       }
     });
+}
+
+function updateParticleEnabled(enabled) {
+  fetch("/update_particle_enabled", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      enabled: enabled,
+    }),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.channel_image) {
+        updateImageDisplay(data.channel_image);
+      }
+      if (data.brightness_plot) {
+        Plotly.react(
+          "brightness-plot",
+          JSON.parse(data.brightness_plot).data,
+          JSON.parse(data.brightness_plot).layout,
+        );
+      }
+    })
+    .catch((error) => console.error("Error:", error));
 }
 
 /**
@@ -127,6 +165,11 @@ function fetchImageUpdate(url, params) {
           JSON.parse(data.brightness_plot).data,
           JSON.parse(data.brightness_plot).layout,
         );
+      }
+      // Update checkbox state based on particle enabled status
+      if (data.particle_enabled !== undefined) {
+        particleEnabledCheckbox.checked = data.particle_enabled;
+        particleEnabledCheckbox.dataset.particle = data.current_particle;
       }
     });
 }

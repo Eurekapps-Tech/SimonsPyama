@@ -58,12 +58,13 @@ class App:
         def processing():
             return render_template('preprocess.html')
 
+
         @self.app.route('/documentation', methods=['GET', 'POST'])
         def documentation():
             svg = "static/images/UserTutorial.svg"
             return render_template('documentation.html', svg=svg)
 
-        @self.app.route('/update_image', methods=['POST'])
+        @self.app.route('/update_image', methods=['GET', 'POST'])
         def update_image():
             new_position = int(request.form['position'])
             new_channel = int(request.form['channel'])
@@ -86,8 +87,23 @@ class App:
             return jsonify({
                 'channel_image': self.cell_viewer.return_image(),
                 'brightness_plot': self.cell_viewer.brightness_plot,
-                'all_particles_len': self.cell_viewer.all_particles_len
+                'all_particles_len': self.cell_viewer.all_particles_len,
+                'particle_enabled': self.cell_viewer.particle_enabled,
+                'current_particle': self.cell_viewer.particle
             })
+
+        @self.app.route('/update_particle_enabled', methods=['POST'])
+        def update_particle_enabled():
+            data = request.json
+            enabled = data['enabled']
+            if self.cell_viewer:
+                self.cell_viewer.particle_enabled = enabled
+                self.cell_viewer.particle_enabled_changed()
+                return jsonify({
+                    'channel_image': self.cell_viewer.return_image(),
+                    'brightness_plot': self.cell_viewer.brightness_plot
+                })
+            return jsonify({'error': 'Cell viewer not initialized'}), 400
 
         @self.app.route('/do_segmentation', methods=['POST'])
         def do_segmentation():
