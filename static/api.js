@@ -155,9 +155,9 @@ function fetchImageUpdate(url, params) {
       updateImageDisplay(data.channel_image);
       if (data.all_particles_len !== undefined) {
         const particleSlider = document.getElementById("particle_slider");
-        particleSlider.max = data.all_particles_len - 1;
+        particleSlider.max = data.all_particles_len;
         document.getElementById("particle_value").innerHTML =
-          `${particleSlider.value}/${data.all_particles_len - 1}`;
+          `${particleSlider.value}/${data.all_particles_len}`;
       }
       if (data.brightness_plot) {
         Plotly.react(

@@ -17,6 +17,14 @@ import pathlib
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 
+
+def are_all_enabled(group):
+    """
+    Check if all values in the group are equal to 1.
+    Returns True if all values are 1, False otherwise.
+    """
+    return (group == 1).all()
+
 def numpy_to_b64_string(image):
     rawBytes = BytesIO()
     im = Image.fromarray(image)
@@ -150,21 +158,43 @@ class CellViewer:
         print("disabled:", self.disabled_particles)
 
         # boolean list [True, False] => enabled, disabled
-        particle_states = list(self.all_tracks.groupby(['particle'])['enabled'].all())
+        # - True means all records for that particle have enabled=1
+        # - False means at least one record other than 1 (as in 0 or False)
+        particle_states = list(self.all_tracks.groupby(['particle'])['enabled'].apply(are_all_enabled))
 
-        # all enabled areas except selected particle
-        area_x = [self.area_x[i] for i in range(self.all_particles_len) if particle_states[i] == True and i != particle_index]
-        area_y = [self.area_y[i] for i in range(self.all_particles_len) if particle_states[i] == True and i != particle_index]
+        # Initialize empty lists for area data
+        area_x = []
+        area_y = []
 
-        # selected area
+        # Add enabled areas except selected particle
+        for i in range(self.all_particles_len):
+            if particle_states[i] == True and i != particle_index:
+                try:
+                    area_x.append(self.area_x[i])
+                    area_y.append(self.area_y[i])
+                except IndexError:
+                    print("IndexError at particle", i)
+
+        # print("area_x shape and length:", (area_x[0]).shape, len(area_x))
+
+        # Add the selected particle area
         area_x.append(self.area_x[particle_index])
         area_y.append(self.area_y[particle_index])
 
-        # equivalent for brightness
-        brightness_x = [self.brightness_x[i] for i in range(self.all_particles_len) if particle_states[i] == True and i != particle_index]
-        brightness_y = [self.brightness_y[i] for i in range(self.all_particles_len) if particle_states[i] == True and i != particle_index]
+        # Initialize empty lists for brightness data
+        brightness_x = []
+        brightness_y = []
 
-        # selected area
+        # Add enabled brightness values except selected particle
+        for i in range(self.all_particles_len):
+            if particle_states[i] == True and i != particle_index:
+                try:
+                    brightness_x.append(self.brightness_x[i])
+                    brightness_y.append(self.brightness_y[i])
+                except IndexError:
+                    print("IndexError at particle", i," (brightness)")
+
+        # Add the selected particle brightness
         brightness_x.append(self.brightness_x[particle_index])
         brightness_y.append(self.brightness_y[particle_index])
 
@@ -229,12 +259,15 @@ class CellViewer:
             self.brightness_x.append(x)
             self.brightness_y.append(y)
 
+        # print("brightness_x length:", (len(self.brightness_x)))
         self.area_x = []
         self.area_y = []
         for p in self.all_particles:
             x,y = self.get_track_data(p, 'area')
             self.area_x.append(x)
             self.area_y.append(y)
+
+        # print("area_x length:", (len(self.area_x)))
 
         colors = [self.COLOR_GRAY] * len(self.all_particles)
         colors[len(self.all_particles)-1] = self.COLOR_RED
