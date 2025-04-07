@@ -8,6 +8,7 @@ import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 from nd2reader import ND2Reader
 import plotly.io as pio
+from time import sleep
 
 from io import BytesIO
 import base64
@@ -48,6 +49,7 @@ class CellViewer:
         self.COLOR_ORANGE = '#FF8C00'
 
         self.OPACITY_SELECTED = 1
+        self.OPACITY_DEFAULT = 0.5
 
         self.frame_change_suppress = False
 
@@ -79,7 +81,7 @@ class CellViewer:
         # Replacing widgets from the show() method:
 
         self.brightness_figure = go.Figure()
-        self.brightness_figure.update_layout(title='Brightness')
+        self.brightness_figure.update_layout(title='Brightness', height=1200)
         self.brightness_lines = go.Scatter(x=[], y=[], mode='lines')
         self.brightness_cursor_line = go.Scatter(x=[0,0], y=[0,1], mode='lines', line=dict(color=self.COLOR_RED))
 
@@ -151,6 +153,7 @@ class CellViewer:
         return t['frame'].values, t[field].values
 
     def update_plots(self):
+        # sleep(0.150)
         particle_index = self.particle_index()
         self.disabled_particles = list(self.all_tracks[self.all_tracks['enabled'] != '1.0']['particle'].unique())
 
@@ -168,6 +171,12 @@ class CellViewer:
             particle_data = self.all_tracks[self.all_tracks['particle'] == particle]
             enabled_value = particle_data['enabled'].iloc[0]  # Get first value
             particle_states.append(1 if is_enabled(enabled_value) else 0)
+            if particle_index == particle:
+                if particle_states[-1] == 1:
+                    self.particle_enabled = True
+                else:
+                    self.particle_enabled = False
+
 
         print(particle_states)
         # Initialize empty lists for area data
@@ -207,20 +216,26 @@ class CellViewer:
         # brightness_y.append(self.brightness_y[particle_index])
 
         opacities = [self.OPACITY_DEFAULT] * len(brightness_x)
-        opacities[len(opacities)-1] = self.OPACITY_SELECTED
+        opacities = particle_states
 
         colors = [self.COLOR_GRAY] * len(brightness_x)
         if self.particle_enabled == True:
             colors[particle_index] = self.COLOR_RED
+            opacities[particle_index] = self.OPACITY_SELECTED
         else:
             colors[particle_index] = self.COLOR_ORANGE
+            opacities[particle_index] = self.OPACITY_SELECTED
 
         # Update brightness tracks
         self.brightness_figure.data = []
         for i in range(len(brightness_x)):
             self.brightness_figure.add_trace(go.Scatter(x=brightness_x[i], y=brightness_y[i], mode='lines',
-                                                        line=dict(color=colors[i]), opacity=opacities[i]))
-        self.brightness_figure.add_trace(self.brightness_cursor_line)
+                                                        line=dict(color=colors[i]), opacity=opacities[i],
+                                                        name=f'Trace {i}'))
+        self.brightness_figure.add_trace(go.Scatter(x=brightness_x[particle_index], y=brightness_y[particle_index], mode='lines',
+                                                line=dict(color=colors[particle_index]), opacity=opacities[particle_index],
+                                                name=f'Trace {particle_index} (Highlighted)'))
+        # self.brightness_figure.add_trace(self.brightness_cursor_line)
 
         # Update area tracks
         self.area_figure.data = []
@@ -335,8 +350,8 @@ class CellViewer:
 
 
     def particle_index(self):
-        print(f'Index current particle {self.all_particles.index(self.particle) + 1}')
-        return self.all_particles.index(self.particle) + 1
+        print(f'Index current particle {self.all_particles.index(self.particle)}')
+        return self.all_particles.index(self.particle)
 
     def particle_changed(self):
         def is_enabled(value):
@@ -495,11 +510,6 @@ class CellViewer:
 
         o = np.zeros(image_shape,dtype=np.uint8)
 
-        def is_enabled(value):
-                enabled_values = {1, '1', '1.0', 1.0, True, 'True'}
-                value_str = str(value).lower()
-                enabled_values_str = {str(v).lower() for v in enabled_values}
-                return value_str in enabled_values_str
 
 
 

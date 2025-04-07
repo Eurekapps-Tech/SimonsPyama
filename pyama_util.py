@@ -613,12 +613,14 @@ def track_position_pyama(pos: int, pos_path: pathlib.Path, expand: int) -> None:
         if len(track) < min_track_length:
             continue
 
-        particle_id += 1
+
 
         for row in track:
             row['particle'] = particle_id
             row['enabled'] = True
             result_data.append(row)
+
+        particle_id += 1
 
     tracks = pd.DataFrame(result_data)
 

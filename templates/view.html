@@ -142,7 +142,7 @@
 
     #brightness-plot {
         width: 100%;
-        height: 400px;
+        height: 800px;
     }
 </style>
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -172,7 +172,7 @@
                 </div>
                 <div class="control-group">
                     <label for="particle_slider">Particle: </label>
-                    <input type="range" id="particle_slider" name="particle_slider" min="1" max="{{ all_particles_len}}" value="{{ current_particle_index }}">
+                    <input type="range" id="particle_slider" name="particle_slider" min="0" max="{{ all_particles_len}}" value="{{ current_particle_index }}">
                     <span id="particle_value">{{ current_particle_index }}/ {{ all_particles_len}}</span>
                 </div>
                 <div class="control-group">
@@ -205,12 +205,6 @@
 var brightnessPlot = JSON.parse('{{ brightness_plot | safe }}');
 Plotly.newPlot('brightness-plot', brightnessPlot.data, brightnessPlot.layout);
 
-// Initialize the checkbox state based on disabled_particles
-document.addEventListener('DOMContentLoaded', function() {
-    const disabledParticles = {{ disabled_particles|tojson|safe }};
-    const currentParticle = {{ current_particle_index }};
-    updateParticleCheckbox(currentParticle, disabledParticles);
-});
 
 // document.addEventListener("DOMContentLoaded", function() {
 //     const currentParticle = {{ current_particle_index }};
