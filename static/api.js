@@ -11,13 +11,6 @@ timeframeSlider.addEventListener("input", updateImage);
 particleSlider.addEventListener("input", updateImageAndPlot);
 const particleEnabledCheckbox = document.getElementById("particle_enabled");
 
-// Set default state of checkbox to checked
-document.addEventListener("DOMContentLoaded", function () {
-  if (particleEnabledCheckbox) {
-    particleEnabledCheckbox.checked = true;
-  }
-});
-
 particleEnabledCheckbox.addEventListener("change", function () {
   updateParticleEnabled(this.checked);
 });
@@ -98,7 +91,7 @@ function updateParticleEnabled(enabled) {
     .catch((error) => console.error("Error:", error));
 }
 
-/**
+/* *
  * Helper functions to update slider value displays
  */
 function updatePositionText() {
@@ -120,7 +113,7 @@ function updateParticleText() {
     `${particleSlider.value}/${particleSlider.max}`;
 }
 
-/**
+/* *
  * Creates URL-encoded request body from parameters object
  * @param {Object} params - Parameters to encode
  * @returns {string} Encoded parameter string
@@ -136,7 +129,7 @@ function createRequestBody(params) {
   return body;
 }
 
-/**
+/* *
  * Fetches image updates from the server and updates the display
  * @param {string} url - API endpoint
  * @param {Object} params - Request parameters
@@ -156,8 +149,6 @@ function fetchImageUpdate(url, params) {
       if (data.all_particles_len !== undefined) {
         const particleSlider = document.getElementById("particle_slider");
         particleSlider.max = data.all_particles_len;
-        document.getElementById("particle_value").innerHTML =
-          `${particleSlider.value}/${data.all_particles_len}`;
       }
       if (data.brightness_plot) {
         Plotly.react(
@@ -167,18 +158,25 @@ function fetchImageUpdate(url, params) {
         );
       }
       // Update checkbox state based on disabled particles
-      if (
-        data.current_particle !== undefined &&
-        data.disabled_particles !== undefined
-      ) {
+      //
+      if (data.disabled_particles !== undefined) {
         particleEnabledCheckbox.checked = !data.disabled_particles.includes(
-          data.current_particle,
+          parseInt(params.particle), // Convert to integer since it might be a string
         );
       }
+
+      // if (
+      //   data.current_particle !== undefined &&
+      //   data.disabled_particles !== undefined
+      // ) {
+      //   particleEnabledCheckbox.checked = !data.disabled_particles.includes(
+      //     data.current_particle - 1,
+      //   );
+      // }
     });
 }
 
-/**
+/* *
  * Updates the image element with new base64 encoded image data
  * @param {string} base64Image - Base64 encoded image data
  */

@@ -47,7 +47,6 @@ class CellViewer:
         self.COLOR_RED = 'Red'
         self.COLOR_ORANGE = '#FF8C00'
 
-        self.OPACITY_DEFAULT = 0.5
         self.OPACITY_SELECTED = 1
 
         self.frame_change_suppress = False
@@ -153,22 +152,31 @@ class CellViewer:
 
     def update_plots(self):
         particle_index = self.particle_index()
-        self.disabled_particles = list(self.all_tracks[self.all_tracks['enabled'] != 1]['particle'].unique())
+        self.disabled_particles = list(self.all_tracks[self.all_tracks['enabled'] != '1.0']['particle'].unique())
 
         print("disabled:", self.disabled_particles)
 
-        # boolean list [True, False] => enabled, disabled
-        # - True means all records for that particle have enabled=1
-        # - False means at least one record other than 1 (as in 0 or False)
-        particle_states = list(self.all_tracks.groupby(['particle'])['enabled'].apply(are_all_enabled))
+        def is_enabled(value):
+                enabled_values = {1, '1', '1.0', 1.0, True, 'True'}
+                value_str = str(value).lower()
+                enabled_values_str = {str(v).lower() for v in enabled_values}
+                return value_str in enabled_values_str
 
+        particle_states = []
+        for particle in self.all_particles:
+            # Get just the first frame's enabled value for this particle
+            particle_data = self.all_tracks[self.all_tracks['particle'] == particle]
+            enabled_value = particle_data['enabled'].iloc[0]  # Get first value
+            particle_states.append(1 if is_enabled(enabled_value) else 0)
+
+        print(particle_states)
         # Initialize empty lists for area data
         area_x = []
         area_y = []
 
         # Add enabled areas except selected particle
         for i in range(self.all_particles_len):
-            if particle_states[i] == True and i != particle_index:
+            if particle_states[i] == 1 and i != particle_index:
                 try:
                     area_x.append(self.area_x[i])
                     area_y.append(self.area_y[i])
@@ -187,25 +195,25 @@ class CellViewer:
 
         # Add enabled brightness values except selected particle
         for i in range(self.all_particles_len):
-            if particle_states[i] == True and i != particle_index:
-                try:
-                    brightness_x.append(self.brightness_x[i])
-                    brightness_y.append(self.brightness_y[i])
-                except IndexError:
-                    print("IndexError at particle", i," (brightness)")
+            # if particle_states[i] == 1 and i != particle_index:
+            try:
+                brightness_x.append(self.brightness_x[i])
+                brightness_y.append(self.brightness_y[i])
+            except IndexError:
+                print("IndexError at particle", i," (brightness)")
 
         # Add the selected particle brightness
-        brightness_x.append(self.brightness_x[particle_index])
-        brightness_y.append(self.brightness_y[particle_index])
+        # brightness_x.append(self.brightness_x[particle_index])
+        # brightness_y.append(self.brightness_y[particle_index])
 
-        opacities = [self.OPACITY_DEFAULT] * len(area_x)
+        opacities = [self.OPACITY_DEFAULT] * len(brightness_x)
         opacities[len(opacities)-1] = self.OPACITY_SELECTED
 
-        colors = [self.COLOR_GRAY] * len(area_x)
+        colors = [self.COLOR_GRAY] * len(brightness_x)
         if self.particle_enabled == True:
-            colors[len(colors)-1] = self.COLOR_RED
+            colors[particle_index] = self.COLOR_RED
         else:
-            colors[len(colors)-1] = self.COLOR_ORANGE
+            colors[particle_index] = self.COLOR_ORANGE
 
         # Update brightness tracks
         self.brightness_figure.data = []
@@ -325,11 +333,21 @@ class CellViewer:
         self.draw_outlines()
         self.update_image()
 
+
     def particle_index(self):
-        return self.all_particles.index(self.particle)
+        print(f'Index current particle {self.all_particles.index(self.particle) + 1}')
+        return self.all_particles.index(self.particle) + 1
 
     def particle_changed(self):
-        enabled = len(self.all_tracks[(self.all_tracks['particle'] == self.particle) & ((self.all_tracks['enabled'] == True))]) > 0
+        def is_enabled(value):
+                enabled_values = {1, '1', '1.0', 1.0, True, 'True'}
+                value_str = str(value).lower()
+                enabled_values_str = {str(v).lower() for v in enabled_values}
+                return value_str in enabled_values_str
+
+        enabled_value = self.all_tracks[self.all_tracks['particle'] == self.particle]['enabled'].iloc[0]
+        enabled = is_enabled(enabled_value)
+        # enabled = len(self.all_tracks[(self.all_tracks['particle'] == self.particle) & ((self.all_tracks['enabled'] == True))]) > 0
 
         # set both so no update to file is applied
         self.particle_enabled = enabled
@@ -477,21 +495,19 @@ class CellViewer:
 
         o = np.zeros(image_shape,dtype=np.uint8)
 
-        # non tracked
-        #o = cv2.rectangle(o, (0,0), (image_shape[0],image_shape[1]), (0,0,255), -1)
-        #m1 = (outlines != 0).astype(np.uint8)*255
-        #overlay = self.combine_images(o,overlay,m1)
+        def is_enabled(value):
+                enabled_values = {1, '1', '1.0', 1.0, True, 'True'}
+                value_str = str(value).lower()
+                enabled_values_str = {str(v).lower() for v in enabled_values}
+                return value_str in enabled_values_str
 
-        #frame_tracks = self.all_tracks[self.all_tracks['frame'] == self.frame]
-        #tracked_labels = frame_tracks['label'].unique()
 
-        # other tracked
-        #o = cv2.rectangle(o, (0,0), (image_shape[0],image_shape[1]), (0,255,255), -1)
-        #m2 = np.isin(outlines, tracked_labels).astype(np.uint8)*255
-        #overlay = self.combine_images(o,overlay,m2)
+
+
 
         frame_tracks = self.all_tracks[self.all_tracks['frame'] == self.frame]
-        enabled_labels = frame_tracks[frame_tracks['enabled'] == True]['label'].unique()
+        enabled_labels = frame_tracks[frame_tracks['enabled'] != '1.0']['label'].unique()
+        # enabled_labels = frame_tracks[frame_tracks['enabled'] == True]['label'].unique()
         tracked_labels = frame_tracks['label'].unique()
 
         # all tracked cells

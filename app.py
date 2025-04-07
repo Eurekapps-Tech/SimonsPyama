@@ -39,12 +39,14 @@ class App:
             else:
                 return jsonify({'redirect': url_for('index')})
 
+
         @self.app.route('/view', methods=['GET', 'POST'])
         def view():
             if self.cell_viewer is None:
                 return redirect(url_for('index'))
             self.cell_viewer.position_changed()
-            current_particle_index = self.cell_viewer.all_particles.index(self.cell_viewer.particle)
+            # current_particle_index = self.cell_viewer.all_particles.index(self.cell_viewer.particle)
+            current_particle_index = self.cell_viewer.particle_index()
             return render_template('view.html',
                                    channel_image=self.cell_viewer.return_image(),
                                    n_positions=len(self.cell_viewer.positions),
@@ -85,6 +87,7 @@ class App:
 
             self.cell_viewer.get_channel_image()
             self.cell_viewer.draw_outlines()
+            print("disabled app.py", self.cell_viewer.disabled_particles)
             return jsonify({
                 'channel_image': self.cell_viewer.return_image(),
                 'brightness_plot': self.cell_viewer.brightness_plot,
@@ -93,6 +96,7 @@ class App:
                 'current_particle': self.cell_viewer.particle,
                 'disabled_particles': self.cell_viewer.disabled_particles
             })
+
 
         @self.app.route('/update_particle_enabled', methods=['POST'])
         def update_particle_enabled():
