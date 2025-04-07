@@ -111,7 +111,6 @@ class CellViewer:
             self.enabled_checkbox = {'type': 'Checkbox', 'description': 'Cell Enabled', 'value': False}
 
         self.area_figure.update_layout(height=300)
-        self.brightness_figure.update_layout(height=300)
 
         self.brightness_plot = self.plotly_to_json(self.brightness_figure)
 
@@ -155,9 +154,6 @@ class CellViewer:
     def update_plots(self):
         # sleep(0.150)
         particle_index = self.particle_index()
-        self.disabled_particles = list(self.all_tracks[self.all_tracks['enabled'] != '1.0']['particle'].unique())
-
-        print("disabled:", self.disabled_particles)
 
         def is_enabled(value):
                 enabled_values = {1, '1', '1.0', 1.0, True, 'True'}
@@ -166,6 +162,7 @@ class CellViewer:
                 return value_str in enabled_values_str
 
         particle_states = []
+        ix=0
         for particle in self.all_particles:
             # Get just the first frame's enabled value for this particle
             particle_data = self.all_tracks[self.all_tracks['particle'] == particle]
@@ -176,9 +173,10 @@ class CellViewer:
                     self.particle_enabled = True
                 else:
                     self.particle_enabled = False
+            if particle_states[-1] == 0:
+                self.disabled_particles.append(float(ix))
+            ix+=1
 
-
-        print(particle_states)
         # Initialize empty lists for area data
         area_x = []
         area_y = []
@@ -251,7 +249,6 @@ class CellViewer:
         self.data_dir = os.path.join(self.output_path,self.position[1][1])
         if self.file is not None:
             self.file.close()
-        print(self.data_dir)
         self.file = h5py.File(os.path.join(self.data_dir,'data.h5'), "r")
         self.frame_min = self.file.attrs['frame_min']
         self.frame_max = self.file.attrs['frame_max']
@@ -300,8 +297,8 @@ class CellViewer:
 
         self.update_cursors()
 
-        self.brightness_figure.add_trace(self.brightness_lines)
-        self.brightness_figure.add_trace(self.brightness_cursor_line)
+        # self.brightness_figure.add_trace(self.brightness_lines)
+        # self.brightness_figure.add_trace(self.brightness_cursor_line)
 
         self.area_figure.add_trace(self.area_lines)
         self.area_figure.add_trace(self.area_cursor_line)
@@ -350,7 +347,7 @@ class CellViewer:
 
 
     def particle_index(self):
-        print(f'Index current particle {self.all_particles.index(self.particle)}')
+        # print(f'Index current particle {self.all_particles.index(self.particle)}')
         return self.all_particles.index(self.particle)
 
     def particle_changed(self):

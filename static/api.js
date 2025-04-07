@@ -43,6 +43,8 @@ function updateImage() {
 function updateBrightnessPlot() {
   const params = {
     position: document.getElementById("position_slider").value,
+    channel: document.getElementById("channel_slider").value,
+    frame: document.getElementById("timeframe_slider").value,
     particle: document.getElementById("particle_slider").value,
   };
 

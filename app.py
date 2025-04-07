@@ -67,6 +67,7 @@ class App:
             svg = "static/images/UserTutorial.svg"
             return render_template('documentation.html', svg=svg)
 
+
         @self.app.route('/update_image', methods=['GET', 'POST'])
         def update_image():
             new_position = int(request.form['position'])
@@ -87,7 +88,6 @@ class App:
 
             self.cell_viewer.get_channel_image()
             self.cell_viewer.draw_outlines()
-            print("disabled app.py", self.cell_viewer.disabled_particles)
             return jsonify({
                 'channel_image': self.cell_viewer.return_image(),
                 'brightness_plot': self.cell_viewer.brightness_plot,
