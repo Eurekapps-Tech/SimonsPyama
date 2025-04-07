@@ -4,43 +4,45 @@
  * based on user input from sliders and other controls.
  */
 
+let updateInProgress = false;
+let pendingUpdate = false;
+let debounceTimeout = null;
+const DEBOUNCE_DELAY = 300;
+
 // Set up event listeners for slider changes
-positionSlider.addEventListener("input", updateImageAndPlot);
+positionSlider.addEventListener("input", debouncedUpdateImageAndPlot);
 channelSlider.addEventListener("input", updateImage);
 timeframeSlider.addEventListener("input", updateImage);
-particleSlider.addEventListener("input", updateImageAndPlot);
+particleSlider.addEventListener("input", debouncedUpdateImageAndPlot);
 const particleEnabledCheckbox = document.getElementById("particle_enabled");
 
 particleEnabledCheckbox.addEventListener("change", function () {
   updateParticleEnabled(this.checked);
 });
 
+function debouncedUpdateImageAndPlot() {
+  clearTimeout(debounceTimeout);
+  debounceTimeout = setTimeout(() => {
+    if (!updateInProgress) {
+      updateImageAndPlot();
+    } else {
+      pendingUpdate = true;
+    }
+  }, DEBOUNCE_DELAY);
+}
+
 /**
  * Updates both the image and brightness plot
  */
 function updateImageAndPlot() {
-  updateImage();
-  updateBrightnessPlot();
-}
+  if (updateInProgress) {
+    pendingUpdate = true;
+    return;
+  }
 
-/**
- * Fetches and updates the image based on current slider values
- */
-function updateImage() {
-  const params = {
-    position: document.getElementById("position_slider").value,
-    channel: document.getElementById("channel_slider").value,
-    frame: document.getElementById("timeframe_slider").value,
-    particle: document.getElementById("particle_slider").value,
-  };
+  updateInProgress = true;
+  showLoadingIndicator();
 
-  fetchImageUpdate("/update_image", params);
-}
-
-/**
- * Updates the brightness plot based on position and particle values
- */
-function updateBrightnessPlot() {
   const params = {
     position: document.getElementById("position_slider").value,
     channel: document.getElementById("channel_slider").value,
@@ -57,6 +59,7 @@ function updateBrightnessPlot() {
   })
     .then((response) => response.json())
     .then((data) => {
+      updateImageDisplay(data.channel_image);
       if (data.brightness_plot) {
         Plotly.react(
           "brightness-plot",
@@ -64,7 +67,47 @@ function updateBrightnessPlot() {
           JSON.parse(data.brightness_plot).layout,
         );
       }
+      if (data.all_particles_len !== undefined) {
+        const particleSlider = document.getElementById("particle_slider");
+        particleSlider.max = data.all_particles_len;
+      }
+      if (data.disabled_particles !== undefined) {
+        particleEnabledCheckbox.checked = !data.disabled_particles.includes(
+          parseInt(params.particle),
+        );
+      }
+    })
+    .catch((error) => console.error("Error:", error))
+    .finally(() => {
+      updateInProgress = false;
+      hideLoadingIndicator();
+      if (pendingUpdate) {
+        pendingUpdate = false;
+        updateImageAndPlot();
+      }
     });
+}
+
+/**
+ * Fetches and updates the image based on current slider values
+ */
+function updateImage() {
+  const params = {
+    position: document.getElementById("position_slider").value,
+    channel: document.getElementById("channel_slider").value,
+    frame: document.getElementById("timeframe_slider").value,
+    particle: document.getElementById("particle_slider").value,
+  };
+
+  fetchImageUpdate("/update_image", params);
+}
+
+function showLoadingIndicator() {
+  document.body.style.cursor = "wait";
+}
+
+function hideLoadingIndicator() {
+  document.body.style.cursor = "default";
 }
 
 function updateParticleEnabled(enabled) {

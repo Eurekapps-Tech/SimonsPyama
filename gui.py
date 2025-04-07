@@ -296,7 +296,6 @@ class CellViewer:
         opacities[len(self.all_particles)-1] = self.OPACITY_SELECTED
 
         self.update_cursors()
-
         # self.brightness_figure.add_trace(self.brightness_lines)
         # self.brightness_figure.add_trace(self.brightness_cursor_line)
 
