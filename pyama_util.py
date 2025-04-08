@@ -262,6 +262,7 @@ def square_roi(out_dir: str, pos: list, micron_size: float) -> None:
     None
     """
     folders = get_tracked_folders(out_dir,pos)
+    print(folders)
     for folder in folders:
         square_roi_position(folder[0],folder[1],micron_size)
 
@@ -294,9 +295,25 @@ def square_roi_position(pos: int, pos_path: pathlib.Path, micron_size: float) ->
         frame_data_index = frame-data.attrs['frame_min']
         print("Frame",str(int(frame)))
 
-        t = tracks[(tracks['frame'] == frame) & (tracks['enabled'] == True)]
+        # t = tracks[(tracks['frame'] == frame) & (tracks['enabled'] == True)]
+        true_values = [1, '1', '1.0', 1.0, True, 'True', 'true', 'TRUE']
+
+        # Convert true_values to lowercase strings
+        true_values_lower = [str(v).lower() for v in true_values]
+
+        # Create the enabled condition:
+        # 1. Convert the enabled column to string
+        # 2. Convert all values to lowercase
+        # 3. Check if they're in our true_values list
+        enabled_condition = tracks['enabled'].astype(str).str.lower().isin(true_values_lower)
+
+        # Apply both conditions to filter the dataframe
+        t = tracks[
+            (tracks['frame'] == frame) & (enabled_condition)]
+
 
         for index, record in t.iterrows():
+
             x = int((record['bbox_x1'] + record['bbox_x2']) // 2)
             y = int((record['bbox_y1'] + record['bbox_y2']) // 2)
 
@@ -308,6 +325,7 @@ def square_roi_position(pos: int, pos_path: pathlib.Path, micron_size: float) ->
 
             tracks.loc[(tracks['frame'] == frame) & (tracks['particle'] == record['particle']), 'square_area'] = (x2-x1) * (y2-y1)
             for i in range(len(data.attrs['fl_channels'])):
+
                 im_slice = data['fluorescence'][int(frame_data_index),i][x1:x2,y1:y2]
                 tracks.loc[(tracks['frame'] == frame) & (tracks['particle'] == record['particle']), 'square_brightness_' + str(i)] = im_slice.sum()
 

@@ -512,17 +512,27 @@ class CellViewer:
 
 
         frame_tracks = self.all_tracks[self.all_tracks['frame'] == self.frame]
-        enabled_labels = frame_tracks[frame_tracks['enabled'] != '1.0']['label'].unique()
+
+        true_values = [1, '1', '1.0', 1.0, True, 'True', 'true', 'TRUE']
+
+        # Convert true_values to lowercase strings
+        true_values_lower = [str(v).lower() for v in true_values]
+
+        enabled_condition = ~frame_tracks['enabled'].astype(str).str.lower().isin(true_values_lower)
+
+        # Get unique labels for disabled tracks
+        enabled_labels = frame_tracks[~enabled_condition]['label'].unique()
+
         # enabled_labels = frame_tracks[frame_tracks['enabled'] == True]['label'].unique()
         tracked_labels = frame_tracks['label'].unique()
 
         # all tracked cells
-        o = cv2.rectangle(o, (0,0), (image_shape[0],image_shape[1]), (255,0,0), -1)
+        o = cv2.rectangle(o, (0,0), (image_shape[0],image_shape[1]), (255,0,0), -1) # Red
         m1 = np.isin(outlines, tracked_labels).astype(np.uint8)*255
         overlay = self.combine_images(o,overlay,m1)
 
         # enabled cells
-        o = cv2.rectangle(o, (0,0), (image_shape[0],image_shape[1]), (0,255,0), -1)
+        o = cv2.rectangle(o, (0,0), (image_shape[0],image_shape[1]), (0,255,0), -1) # Green
         m2 = np.isin(outlines, enabled_labels).astype(np.uint8)*255
         overlay = self.combine_images(o,overlay,m2)
 
@@ -530,7 +540,7 @@ class CellViewer:
         label = self.get_particle_label()
         if label is not None:
             if self.particle_enabled == True:
-                o = cv2.rectangle(o, (0,0), (image_shape[0],image_shape[1]), (0,0,255), -1)
+                o = cv2.rectangle(o, (0,0), (image_shape[0],image_shape[1]), (0,0,255), -1) # Dark Blue
             else:
                 o = cv2.rectangle(o, (0,0), (image_shape[0],image_shape[1]), (0,140,255), -1)
             m3 = (outlines == label).astype(np.uint8)*255
