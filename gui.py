@@ -506,11 +506,6 @@ class CellViewer:
 
         o = np.zeros(image_shape,dtype=np.uint8)
 
-
-
-
-
-
         frame_tracks = self.all_tracks[self.all_tracks['frame'] == self.frame]
 
         true_values = [1, '1', '1.0', 1.0, True, 'True', 'true', 'TRUE']

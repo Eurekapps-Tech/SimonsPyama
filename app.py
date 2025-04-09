@@ -39,13 +39,11 @@ class App:
             else:
                 return jsonify({'redirect': url_for('index')})
 
-
         @self.app.route('/view', methods=['GET', 'POST'])
         def view():
             if self.cell_viewer is None:
                 return redirect(url_for('index'))
             self.cell_viewer.position_changed()
-            # current_particle_index = self.cell_viewer.all_particles.index(self.cell_viewer.particle)
             current_particle_index = self.cell_viewer.particle_index()
             return render_template('view.html',
                                    channel_image=self.cell_viewer.return_image(),
@@ -61,12 +59,10 @@ class App:
         def processing():
             return render_template('preprocess.html')
 
-
         @self.app.route('/documentation', methods=['GET', 'POST'])
         def documentation():
             svg = "static/images/UserTutorial.svg"
             return render_template('documentation.html', svg=svg)
-
 
         @self.app.route('/update_image', methods=['GET', 'POST'])
         def update_image():
@@ -96,7 +92,6 @@ class App:
                 'current_particle': self.cell_viewer.particle,
                 'disabled_particles': self.cell_viewer.disabled_particles
             })
-
 
         @self.app.route('/update_particle_enabled', methods=['POST'])
         def update_particle_enabled():
@@ -155,6 +150,19 @@ class App:
 
             pyama_util.square_roi(out_dir, positions, square_um_size)
             return jsonify({'status': 'success'})
+
+        @self.app.route('/do_export', methods=['POST'])
+        def do_export():
+            data = request.json
+            out_dir = self.cell_viewer.output_path
+            positions = list(range(data['position_min'], data['position_max'] + 1))
+            minutes = data['minutes']
+
+            try:
+                pyama_util.csv_output(out_dir, positions, minutes)
+                return jsonify({'status': 'success'})
+            except Exception as e:
+                return jsonify({'status': 'error', 'message': str(e)}), 400
 
         @self.app.route('/analysis')
         def analysis():

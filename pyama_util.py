@@ -9,7 +9,8 @@ import pandas as pd
 import re
 import math
 
-import matplotlib.pyplot as plt
+
+# import matplotlib.pyplot as plt
 
 import pathlib
 
@@ -164,7 +165,7 @@ def csv_output_position(pos: int, pos_path: pathlib.Path, mins: float, use_squar
             area = csv_get_table(particles,tracks,frames,mins,'square_area')
         else:
             area = csv_get_table(particles,tracks,frames,mins,'area')
-        area.to_excel(writer, sheet_name='Area')
+        area.to_excel(writer, sheet_name='Area', index=False)
 
         for i in range(len(fl_channel_names)):
             col_name = 'brightness_' + str(i)
@@ -172,12 +173,11 @@ def csv_output_position(pos: int, pos_path: pathlib.Path, mins: float, use_squar
                 brightness = csv_get_table(particles,tracks,frames,mins,'square_' + col_name)
             else:
                 brightness = csv_get_table(particles,tracks,frames,mins,col_name)
-            brightness.to_excel(writer, sheet_name=fl_channel_names[i])
+            brightness.to_excel(writer, sheet_name=fl_channel_names[i], index=False)
 
             table_to_image(pos_path,particles,brightness,fl_channel_names[i])
 
     print('Done')
-
 
 def table_to_image(pos_path: pathlib.Path, particles: list, table: pd.DataFrame, name: str) -> None:
     """
@@ -190,24 +190,27 @@ def table_to_image(pos_path: pathlib.Path, particles: list, table: pd.DataFrame,
     particles (list): List of particle IDs
     table (pd.DataFrame): Data table
     name (str): Name for the output file
-
-    Returns:
-    None
     """
-    plt.ioff()
+    # Import matplotlib and set backend at the start of the function
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    # Create figure without displaying it
     fig = plt.figure()
 
     for p in particles:
-        plt.plot(table['time'].values,table[str(p)].values, color='gray', alpha=0.5)
+        plt.plot(table['time'].values, table[str(p)].values, color='gray', alpha=0.5)
 
     plt.xlabel('Time (Frame)')
     plt.ylabel('Brightness (Pixelsum)')
     plt.title(name)
     plt.tight_layout()
 
+    # Save figure and close it
     fig.savefig(pos_path.joinpath(name + '.png').absolute())
+    plt.close(fig)
 
-    plt.ion()
 
 def csv_get_table(particles: list, tracks: pd.DataFrame, frames: list, mins: float, col: str) -> pd.DataFrame:
     """
